@@ -9,7 +9,7 @@
 
 // Layout dimensions (matching CSS, adapted for 320x480 UI)
 #define STATUS_BAR_HEIGHT 20
-#define TEXT_AREA_HEIGHT 140 // Adjusted from 150 in HTML to 140 as requested
+#define TEXT_AREA_HEIGHT 140 // 150 in web simulator but 140 in the diagram.
 #define KEYBOARD_PADDING 9
 #define TOP_ROW_HEIGHT 45
 #define BOTTOM_ROW_HEIGHT 40
