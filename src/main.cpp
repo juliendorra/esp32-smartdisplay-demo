@@ -272,6 +272,7 @@ void create_keyboard(lv_obj_t *parent)
     lv_obj_remove_style_all(clear_btn); // Remove button base style
     lv_obj_add_style(clear_btn, &style_key, 0);
     lv_obj_add_style(clear_btn, &style_key_pressed, LV_STATE_PRESSED);
+    lv_obj_align(clear_btn, LV_ALIGN_DEFAULT, 0, 0);
     lv_obj_set_size(clear_btn, ACTION_BTN_WIDTH, TOP_ROW_HEIGHT);
     lv_obj_set_pos(clear_btn, 0, 0);
     lv_obj_add_event_cb(clear_btn, action_button_event_cb, LV_EVENT_CLICKED, (void *)"clear");
@@ -285,6 +286,7 @@ void create_keyboard(lv_obj_t *parent)
     lv_obj_remove_style_all(accept_btn); // Remove button base style
     lv_obj_add_style(accept_btn, &style_key, 0);
     lv_obj_add_style(accept_btn, &style_key_pressed, LV_STATE_PRESSED);
+    lv_obj_align(accept_btn, LV_ALIGN_DEFAULT, 0, 0);
     lv_obj_set_size(accept_btn, ACTION_BTN_WIDTH, TOP_ROW_HEIGHT);
     lv_obj_set_pos(accept_btn, kb_inner_width - ACTION_BTN_WIDTH, 0);
     lv_obj_add_event_cb(accept_btn, action_button_event_cb, LV_EVENT_CLICKED, (void *)"accept");
@@ -298,6 +300,7 @@ void create_keyboard(lv_obj_t *parent)
     lv_obj_t *input_cont = lv_obj_create(top_row_cont);
     lv_obj_remove_style_all(input_cont);
     lv_obj_add_style(input_cont, &style_input_cont, 0);
+    lv_obj_align(input_cont, LV_ALIGN_DEFAULT, 0, 0);
     lv_obj_set_size(input_cont, input_width, TOP_ROW_HEIGHT);
     lv_obj_set_pos(input_cont, ACTION_BTN_WIDTH + TOP_ROW_H_GAP, 0);
 
@@ -366,7 +369,8 @@ void create_keyboard(lv_obj_t *parent)
     lv_obj_t *shift_btn = lv_button_create(bottom_row_cont);
     lv_obj_remove_style_all(shift_btn); // Remove button base style
     lv_obj_add_style(shift_btn, &style_key, 0);
-    lv_obj_add_style(shift_btn, &style_key_pressed, LV_STATE_PRESSED);
+    // lv_obj_add_style(shift_btn, &style_key_pressed, LV_STATE_PRESSED);
+    lv_obj_align(shift_btn, LV_ALIGN_DEFAULT, 0, 0);
     lv_obj_set_size(shift_btn, ACTION_BTN_WIDTH, BOTTOM_ROW_HEIGHT);
     lv_obj_set_pos(shift_btn, 0, 0);
     // Add event handler later if needed
@@ -379,7 +383,8 @@ void create_keyboard(lv_obj_t *parent)
     lv_obj_t *numbers_btn = lv_button_create(bottom_row_cont);
     lv_obj_remove_style_all(numbers_btn); // Remove button base style
     lv_obj_add_style(numbers_btn, &style_key, 0);
-    lv_obj_add_style(numbers_btn, &style_key_pressed, LV_STATE_PRESSED);
+    // lv_obj_add_style(numbers_btn, &style_key_pressed, LV_STATE_PRESSED);
+    lv_obj_align(numbers_btn, LV_ALIGN_DEFAULT, 0, 0);
     lv_obj_set_size(numbers_btn, ACTION_BTN_WIDTH, BOTTOM_ROW_HEIGHT);
     lv_obj_set_pos(numbers_btn, kb_inner_width - ACTION_BTN_WIDTH, 0);
     // Add event handler later if needed
@@ -394,6 +399,7 @@ void create_keyboard(lv_obj_t *parent)
     lv_obj_remove_style_all(space_btn); // Remove button base style
     lv_obj_add_style(space_btn, &style_key, 0);
     lv_obj_add_style(space_btn, &style_key_pressed, LV_STATE_PRESSED);
+    lv_obj_align(space_btn, LV_ALIGN_DEFAULT, 0, 0);
     lv_obj_set_size(space_btn, space_width, BOTTOM_ROW_HEIGHT);
     lv_obj_set_pos(space_btn, ACTION_BTN_WIDTH + BOTTOM_ROW_H_GAP, 0);
     lv_obj_add_event_cb(space_btn, action_button_event_cb, LV_EVENT_CLICKED, (void *)"space");
