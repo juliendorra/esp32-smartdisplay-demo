@@ -2,10 +2,16 @@
 #include <esp32_smartdisplay.h>
 
 // --- Configuration ---
-#define SCREEN_WIDTH 480
-#define SCREEN_HEIGHT 320
+#define SCREEN_WIDTH 480  // Physical screen width
+#define SCREEN_HEIGHT 320 // Physical screen height
+
+// These dimensions match the CSS from the reference HTML
+#define PHONE_WIDTH 320   // The virtual phone width in the HTML reference
+#define PHONE_HEIGHT 480  // The virtual phone height in the HTML reference
+
+// Layout dimensions (matching CSS)
 #define STATUS_BAR_HEIGHT 20
-#define TEXT_AREA_HEIGHT 150
+#define TEXT_AREA_HEIGHT 140
 #define KEYBOARD_PADDING 9
 #define TOP_ROW_HEIGHT 45
 #define BOTTOM_ROW_HEIGHT 40
@@ -14,6 +20,10 @@
 #define TOP_ROW_H_GAP 20
 #define BOTTOM_ROW_H_GAP 18
 #define ACTION_BTN_WIDTH 60
+
+// Calculate the height for each keyboard row
+#define KEYBOARD_HEIGHT (PHONE_HEIGHT - STATUS_BAR_HEIGHT - TEXT_AREA_HEIGHT)
+#define KEY_ROW_HEIGHT 50 // Fixed 50px height for blob keys
 
 // --- Colors ---
 #define COLOR_BUTTON lv_color_hex(0xf79b2b)
@@ -95,7 +105,8 @@ void init_styles()
     lv_style_set_radius(&style_blob_key_cont, 25); // Approximation of blob shape top
     lv_style_set_border_width(&style_blob_key_cont, 2);
     lv_style_set_border_color(&style_blob_key_cont, COLOR_BUTTON);
-    lv_style_set_bg_opa(&style_blob_key_cont, LV_OPA_TRANSP);
+    lv_style_set_bg_color(&style_blob_key_cont, COLOR_BLACK);
+    lv_style_set_bg_opa(&style_blob_key_cont, LV_OPA_COVER);
     lv_style_set_clip_corner(&style_blob_key_cont, true); // Helps with radius
     lv_style_set_pad_all(&style_blob_key_cont, 0);
 
@@ -137,11 +148,13 @@ void init_styles()
     // --- Letter Label Style ---
     lv_style_init(&style_letter_label);
     lv_style_set_text_color(&style_letter_label, COLOR_BUTTON);
-    lv_style_set_text_font(&style_letter_label, LV_FONT_DEFAULT); // Adjust font size if needed
+    lv_style_set_text_font(&style_letter_label, &lv_font_montserrat_18); // Larger font for visibility
+    lv_style_set_text_opa(&style_letter_label, LV_OPA_COVER);
 
     // --- Letter Label Active Style ---
     lv_style_init(&style_letter_label_active);
     lv_style_set_text_color(&style_letter_label_active, COLOR_BUTTON_ACTIVE);
+    lv_style_set_text_opa(&style_letter_label_active, LV_OPA_COVER);
 
     // --- Letter Label Hidden Style ---
     lv_style_init(&style_letter_label_hidden);
@@ -212,7 +225,9 @@ void create_text_area(lv_obj_t *parent)
     lv_label_set_long_mode(text_content_label, LV_LABEL_LONG_WRAP);
     lv_obj_set_style_text_color(text_content_label, COLOR_TEXT_AREA_TEXT, 0);
     lv_obj_set_style_text_font(text_content_label, &lv_font_montserrat_20, 0); // Example font size
+    lv_obj_set_style_max_height(text_content_label, lv_pct(100), 0); // Ensure label doesn't exceed parent height
     lv_obj_align(text_content_label, LV_ALIGN_TOP_LEFT, 0, 0);
+
 
     // Cursor
     text_cursor = lv_obj_create(area);
@@ -226,66 +241,79 @@ void create_text_area(lv_obj_t *parent)
 
 void create_keyboard(lv_obj_t *parent)
 {
+    // Create keyboard container
     lv_obj_t *kb_area = lv_obj_create(parent);
     lv_obj_remove_style_all(kb_area);
     lv_obj_add_style(kb_area, &style_keyboard_area, 0);
-    lv_obj_set_size(kb_area, SCREEN_WIDTH, SCREEN_HEIGHT - STATUS_BAR_HEIGHT - TEXT_AREA_HEIGHT);
-    lv_obj_align(kb_area, LV_ALIGN_BOTTOM_MID, 0, 0);
+    // Explicitly set size and position based on constants
+    lv_coord_t kb_height = SCREEN_HEIGHT - STATUS_BAR_HEIGHT - TEXT_AREA_HEIGHT;
+    lv_obj_set_size(kb_area, SCREEN_WIDTH, kb_height);
+    lv_obj_set_pos(kb_area, 0, STATUS_BAR_HEIGHT + TEXT_AREA_HEIGHT); // Position below text area
     lv_obj_remove_flag(kb_area, LV_OBJ_FLAG_SCROLLABLE);
 
+    // Calculate inner dimensions (accounting for padding)
     lv_coord_t kb_inner_width = SCREEN_WIDTH - 2 * KEYBOARD_PADDING;
-    lv_coord_t current_y = 0;
+    
+    // Track vertical position as we build the keyboard
+    lv_coord_t current_y = KEYBOARD_PADDING; // Start after top padding
 
     // --- Top Row ---
     lv_obj_t *top_row_cont = lv_obj_create(kb_area);
     lv_obj_remove_style_all(top_row_cont);
     lv_obj_set_size(top_row_cont, kb_inner_width, TOP_ROW_HEIGHT);
-    lv_obj_align(top_row_cont, LV_ALIGN_TOP_MID, 0, 0);
+    lv_obj_set_pos(top_row_cont, KEYBOARD_PADDING, 0); // Position relative to kb_area top padding
     lv_obj_set_style_pad_all(top_row_cont, 0, 0);
+    lv_obj_remove_flag(top_row_cont, LV_OBJ_FLAG_SCROLLABLE); // Ensure no scrolling
 
+    // Clear button (left)
     lv_obj_t *clear_btn = lv_button_create(top_row_cont);
     lv_obj_remove_style_all(clear_btn);
     lv_obj_add_style(clear_btn, &style_key, 0);
     lv_obj_add_style(clear_btn, &style_key_pressed, LV_STATE_PRESSED);
     lv_obj_set_size(clear_btn, ACTION_BTN_WIDTH, TOP_ROW_HEIGHT);
-    lv_obj_align(clear_btn, LV_ALIGN_LEFT_MID, 0, 0);
+    lv_obj_set_pos(clear_btn, 0, 0);
     lv_obj_add_event_cb(clear_btn, action_button_event_cb, LV_EVENT_CLICKED, (void *)"clear");
+    
     lv_obj_t *clear_label = lv_label_create(clear_btn);
     lv_label_set_text(clear_label, "clear");
     lv_obj_center(clear_label);
 
+    // Accept button (right)
     lv_obj_t *accept_btn = lv_button_create(top_row_cont);
     lv_obj_remove_style_all(accept_btn);
     lv_obj_add_style(accept_btn, &style_key, 0);
     lv_obj_add_style(accept_btn, &style_key_pressed, LV_STATE_PRESSED);
     lv_obj_set_size(accept_btn, ACTION_BTN_WIDTH, TOP_ROW_HEIGHT);
-    lv_obj_align(accept_btn, LV_ALIGN_RIGHT_MID, 0, 0);
+    lv_obj_set_pos(accept_btn, kb_inner_width - ACTION_BTN_WIDTH, 0);
     lv_obj_add_event_cb(accept_btn, action_button_event_cb, LV_EVENT_CLICKED, (void *)"accept");
+    
     lv_obj_t *accept_label = lv_label_create(accept_btn);
     lv_label_set_text(accept_label, "accept");
     lv_obj_center(accept_label);
 
+    // Input container (middle)
+    lv_coord_t input_width = kb_inner_width - 2 * ACTION_BTN_WIDTH - 2 * TOP_ROW_H_GAP;
     lv_obj_t *input_cont = lv_obj_create(top_row_cont);
     lv_obj_remove_style_all(input_cont);
     lv_obj_add_style(input_cont, &style_input_cont, 0);
-    lv_coord_t input_width = kb_inner_width - 2 * ACTION_BTN_WIDTH - 2 * TOP_ROW_H_GAP;
     lv_obj_set_size(input_cont, input_width, TOP_ROW_HEIGHT);
-    lv_obj_align(input_cont, LV_ALIGN_CENTER, 0, 0);
+    lv_obj_set_pos(input_cont, ACTION_BTN_WIDTH + TOP_ROW_H_GAP, 0);
 
+    // Input text and cursor
     input_text_label = lv_label_create(input_cont);
     lv_label_set_text(input_text_label, "");
     lv_obj_set_style_text_color(input_text_label, COLOR_INPUT_TEXT, 0);
-    lv_obj_set_style_text_font(input_text_label, &lv_font_montserrat_18, 0); // Example font size
-    lv_obj_align(input_text_label, LV_ALIGN_LEFT_MID, 0, 0);                 // Align left for text
-
+    lv_obj_set_style_text_font(input_text_label, &lv_font_montserrat_18, 0);
+    lv_obj_align(input_text_label, LV_ALIGN_LEFT_MID, 5, 0); // 5px padding
+    
     input_cursor = lv_obj_create(input_cont);
-    lv_obj_set_size(input_cursor, 2, 18); // Match font size
+    lv_obj_set_size(input_cursor, 2, 18);
     lv_obj_set_style_bg_color(input_cursor, COLOR_CURSOR_INPUT, 0);
     lv_obj_set_style_bg_opa(input_cursor, LV_OPA_COVER, 0);
     lv_obj_set_style_border_width(input_cursor, 0, 0);
-    lv_obj_add_flag(input_cursor, LV_OBJ_FLAG_HIDDEN); // Start hidden
-    // Position update needed in update_input_display
-
+    lv_obj_add_flag(input_cursor, LV_OBJ_FLAG_HIDDEN);
+    
+    // Move down for next row
     current_y += TOP_ROW_HEIGHT + KEY_ROW_V_GAP;
 
     // --- Blob Key Rows ---
@@ -293,24 +321,29 @@ void create_keyboard(lv_obj_t *parent)
         "bac", "fdg", "jek", "mhp",
         "qiv", "wlx", "ynz", ".o?",
         ",r-", "@s'", ":t\"", "/u!"};
-    int key_index = 0;
-    lv_coord_t blob_key_width = (kb_inner_width - 3 * KEY_H_GAP) / 4;
-    lv_coord_t blob_key_height = (SCREEN_HEIGHT - STATUS_BAR_HEIGHT - TEXT_AREA_HEIGHT - KEYBOARD_PADDING * 2 - TOP_ROW_HEIGHT - BOTTOM_ROW_HEIGHT - 3 * KEY_ROW_V_GAP) / 3; // Calculate height
-
-    for (int row = 0; row < 3; row++)
-    {
+    
+    // Calculate blob key dimensions - fixed height and width
+    lv_coord_t blob_key_width = 62; // Fixed 62px width as requested
+    lv_coord_t blob_key_height = KEY_ROW_HEIGHT; // 50px height for each key
+    
+    // Calculate horizontal gap to ensure keys are evenly spaced
+    lv_coord_t calculated_h_gap = (kb_inner_width - (4 * blob_key_width)) / 3;
+    
+    for (int row = 0; row < 3; row++) {
         lv_obj_t *row_cont = lv_obj_create(kb_area);
         lv_obj_remove_style_all(row_cont);
         lv_obj_set_size(row_cont, kb_inner_width, blob_key_height);
-        lv_obj_align(row_cont, LV_ALIGN_TOP_LEFT, 0, current_y);
+        lv_obj_set_pos(row_cont, KEYBOARD_PADDING, current_y); // current_y tracks vertical position
         lv_obj_set_style_pad_all(row_cont, 0, 0);
+        lv_obj_remove_flag(row_cont, LV_OBJ_FLAG_SCROLLABLE); // Ensure no scrolling
 
-        for (int col = 0; col < 4; col++)
-        {
-            lv_obj_t *key = create_blob_key(row_cont, key_letters[key_index++]);
+        for (int col = 0; col < 4; col++) {
+            int key_index = row * 4 + col;
+            lv_obj_t *key = create_blob_key(row_cont, key_letters[key_index]);
             lv_obj_set_size(key, blob_key_width, blob_key_height);
-            lv_obj_align(key, LV_ALIGN_LEFT_MID, col * (blob_key_width + KEY_H_GAP), 0);
+            lv_obj_set_pos(key, col * (blob_key_width + calculated_h_gap), 0);
         }
+        
         current_y += blob_key_height + KEY_ROW_V_GAP;
     }
 
@@ -318,39 +351,44 @@ void create_keyboard(lv_obj_t *parent)
     lv_obj_t *bottom_row_cont = lv_obj_create(kb_area);
     lv_obj_remove_style_all(bottom_row_cont);
     lv_obj_set_size(bottom_row_cont, kb_inner_width, BOTTOM_ROW_HEIGHT);
-    lv_obj_align(bottom_row_cont, LV_ALIGN_TOP_LEFT, 0, current_y + 4); // +4 margin from CSS
+    lv_obj_set_pos(bottom_row_cont, KEYBOARD_PADDING, current_y); // current_y tracks vertical position
     lv_obj_set_style_pad_all(bottom_row_cont, 0, 0);
+    lv_obj_remove_flag(bottom_row_cont, LV_OBJ_FLAG_SCROLLABLE); // Ensure no scrolling
 
+    // Shift button (left)
     lv_obj_t *shift_btn = lv_button_create(bottom_row_cont);
     lv_obj_remove_style_all(shift_btn);
     lv_obj_add_style(shift_btn, &style_key, 0);
     lv_obj_add_style(shift_btn, &style_key_pressed, LV_STATE_PRESSED);
     lv_obj_set_size(shift_btn, ACTION_BTN_WIDTH, BOTTOM_ROW_HEIGHT);
-    lv_obj_align(shift_btn, LV_ALIGN_LEFT_MID, 0, 0);
-    // lv_obj_add_event_cb(shift_btn, action_button_event_cb, LV_EVENT_CLICKED, (void*)"shift"); // Add handler later
+    lv_obj_set_pos(shift_btn, 0, 0);
+    
     lv_obj_t *shift_label = lv_label_create(shift_btn);
     lv_label_set_text(shift_label, "shift");
     lv_obj_center(shift_label);
 
+    // Numbers button (right)
     lv_obj_t *numbers_btn = lv_button_create(bottom_row_cont);
     lv_obj_remove_style_all(numbers_btn);
     lv_obj_add_style(numbers_btn, &style_key, 0);
     lv_obj_add_style(numbers_btn, &style_key_pressed, LV_STATE_PRESSED);
     lv_obj_set_size(numbers_btn, ACTION_BTN_WIDTH, BOTTOM_ROW_HEIGHT);
-    lv_obj_align(numbers_btn, LV_ALIGN_RIGHT_MID, 0, 0);
-    // lv_obj_add_event_cb(numbers_btn, action_button_event_cb, LV_EVENT_CLICKED, (void*)"numbers"); // Add handler later
+    lv_obj_set_pos(numbers_btn, kb_inner_width - ACTION_BTN_WIDTH, 0);
+    
     lv_obj_t *numbers_label = lv_label_create(numbers_btn);
     lv_label_set_text(numbers_label, "123");
     lv_obj_center(numbers_label);
 
+    // Space button (middle)
+    lv_coord_t space_width = kb_inner_width - 2 * ACTION_BTN_WIDTH - 2 * BOTTOM_ROW_H_GAP;
     lv_obj_t *space_btn = lv_button_create(bottom_row_cont);
     lv_obj_remove_style_all(space_btn);
     lv_obj_add_style(space_btn, &style_key, 0);
     lv_obj_add_style(space_btn, &style_key_pressed, LV_STATE_PRESSED);
-    lv_coord_t space_width = kb_inner_width - 2 * ACTION_BTN_WIDTH - 2 * BOTTOM_ROW_H_GAP;
     lv_obj_set_size(space_btn, space_width, BOTTOM_ROW_HEIGHT);
-    lv_obj_align(space_btn, LV_ALIGN_CENTER, 0, 0);
+    lv_obj_set_pos(space_btn, ACTION_BTN_WIDTH + BOTTOM_ROW_H_GAP, 0);
     lv_obj_add_event_cb(space_btn, action_button_event_cb, LV_EVENT_CLICKED, (void *)"space");
+    
     lv_obj_t *space_label = lv_label_create(space_btn);
     lv_label_set_text(space_label, "space");
     lv_obj_center(space_label);
@@ -358,29 +396,35 @@ void create_keyboard(lv_obj_t *parent)
 
 lv_obj_t *create_blob_key(lv_obj_t *parent, const char *letters)
 {
+    // Create container for the blob key
     lv_obj_t *cont = lv_obj_create(parent);
     lv_obj_remove_style_all(cont);
     lv_obj_add_style(cont, &style_blob_key_cont, 0);
-    lv_obj_set_user_data(cont, (void *)letters); // Store letters
+    lv_obj_set_user_data(cont, (void *)letters); // Store letters for event handler
     lv_obj_add_event_cb(cont, blob_key_event_cb, LV_EVENT_ALL, NULL);
-    lv_obj_clear_flag(cont, LV_OBJ_FLAG_SCROLLABLE); // Clear flags individually
-    lv_obj_clear_flag(cont, LV_OBJ_FLAG_CLICKABLE);  // Container isn't clickable itself, events handled manually
+    lv_obj_clear_flag(cont, LV_OBJ_FLAG_SCROLLABLE);
+    
+    // Make container clickable to receive events
+    lv_obj_add_flag(cont, LV_OBJ_FLAG_CLICKABLE);
 
     // Create letter labels
+    // Left letter (bottom left)
     lv_obj_t *left_letter = lv_label_create(cont);
     lv_obj_add_style(left_letter, &style_letter_label, 0);
-    lv_obj_add_style(left_letter, &style_letter_label_active, LV_STATE_USER_1); // Use USER_1 for active
-    lv_obj_add_style(left_letter, &style_letter_label_hidden, LV_STATE_USER_2); // Use USER_2 for hidden
+    lv_obj_add_style(left_letter, &style_letter_label_active, LV_STATE_USER_1); // Active state
+    lv_obj_add_style(left_letter, &style_letter_label_hidden, LV_STATE_USER_2); // Hidden state
     lv_label_set_text_fmt(left_letter, "%c", letters[0]);
     lv_obj_align(left_letter, LV_ALIGN_BOTTOM_LEFT, 4, -4);
-
+    
+    // Center letter (top center)
     lv_obj_t *center_letter = lv_label_create(cont);
     lv_obj_add_style(center_letter, &style_letter_label, 0);
     lv_obj_add_style(center_letter, &style_letter_label_active, LV_STATE_USER_1);
     lv_obj_add_style(center_letter, &style_letter_label_hidden, LV_STATE_USER_2);
     lv_label_set_text_fmt(center_letter, "%c", letters[1]);
     lv_obj_align(center_letter, LV_ALIGN_TOP_MID, 0, 2);
-
+    
+    // Right letter (bottom right)
     lv_obj_t *right_letter = lv_label_create(cont);
     lv_obj_add_style(right_letter, &style_letter_label, 0);
     lv_obj_add_style(right_letter, &style_letter_label_active, LV_STATE_USER_1);
